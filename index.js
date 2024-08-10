@@ -61,7 +61,7 @@ app.post("/api/add-product", async (req, res) => {
   try {
     const { product_name, product_category,quantity, product_price } = req.body;
     const new_product = await pool.query(
-      "INSERT INTO product(product_name,product_category,quantity,product_price) VALUES($1,$2,$3) RETURNING *",
+      "INSERT INTO product(product_name,product_category,quantity,product_price) VALUES($1,$2,$3,$4) RETURNING *",
       [product_name, quantity, product_price]
     );
     res.json(new_product.rows[0]);
