@@ -32,14 +32,12 @@ CREATE TABLE cafe_branch (
 CREATE TABLE orders (
     order_id SERIAL PRIMARY KEY,
     customer_name VARCHAR(250) NOT NULL,
-    order_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    order_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    payment_method VARCHAR(100) NOT NULL,
+    product_id INTEGER NOT NULL,
+    product_name VARCHAR(250) NOT NULL,
+    quantity_order INTEGER NOT NULL,
+    price_total DECIMAL(10, 2) NOT NULL
 );
 
-CREATE TABLE order_detail (
-    order_detail_id SERIAL PRIMARY KEY,
-    order_id INTEGER NOT NULL REFERENCES orders(order_id),
-    payment_method VARCHAR(100) NOT NULL,
-    product_id INTEGER NOT NULL REFERENCES product(product_id),
-    quantity_order INTEGER NOT NULL,
-    price_total INTEGER NOT NULL
-);
+
