@@ -49,11 +49,25 @@ app.post("/api/add-item", async (req, res) => {
 });
 // prodcut section
 
+// get single product
+app.get("/api/products/:id", async (req, res) => {
+    try {
+        const {id} = req.params;
+        const getSingleProduct = await pool.query("SELECT * FROM product WHERE product_id = $1", [id])
+        res.json(getSingleProduct.rows[0]);
+        res.status(200);
+    } catch (error) {
+        console.log(error);
+        res.json({ message: error });
+    }
+})
+
 // get all products
 app.get("/api/products", async (req, res) => {
   try {
     const getAllproducts = await pool.query("SELECT * FROM product");
     res.json(getAllproducts.rows);
+    res.status(200);
   } catch (error) {
     console.log(error);
     res.json({ message: error });
