@@ -107,7 +107,7 @@ app.get("/api/user-stock", async (req, res) => {
     }
   });
 // login stock
-app.post("/api/login-cashier", async (req, res) => {
+app.post("/api/login-stock", async (req, res) => {
     try {
       const { username, password } = req.body;
   
