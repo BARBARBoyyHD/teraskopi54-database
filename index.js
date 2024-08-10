@@ -75,6 +75,70 @@ app.post("/api/login-cashier", async (req, res) => {
   }
 });
 
+// user stock section
+app.post("/api/register-stock", async (req, res) => {
+  try {
+    const { username, password, contact } = req.body;
+
+    // Hash the password
+    const saltRounds = 10;
+    const password_hash = await bcrypt.hash(password, saltRounds);
+
+    // Insert the new user into the database
+    const newUser = await pool.query(
+      "INSERT INTO user_stock (username, password_hash, contact) VALUES ($1, $2, $3) RETURNING *",
+      [username, password_hash, contact]
+    );
+
+    res.status(201).json(newUser.rows[0]);
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: error.message });
+  }
+});
+// get all user stock
+app.get("/api/user-stock", async (req, res) => {
+    try {
+      const getUserCashier = await pool.query("SELECT * FROM user_stock");
+      res.json(getUserCashier.rows);
+    } catch (error) {
+      console.log(error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+// login stock
+app.post("/api/login-cashier", async (req, res) => {
+    try {
+      const { username, password } = req.body;
+  
+      // Find the user by username
+      const user = await pool.query(
+        "SELECT * FROM user_stock WHERE username = $1",
+        [username]
+      );
+  
+      if (user.rows.length === 0) {
+        return res.status(400).json({ message: "Invalid username or password" });
+      }
+  
+      const userData = user.rows[0];
+      const validPassword = await bcrypt.compare(
+        password,
+        userData.password_hash
+      );
+  
+      if (!validPassword) {
+        return res.status(400).json({ message: "Invalid username or password" });
+      }
+  
+      // If the password is valid, send a success response
+      return res.status(200).json({ message: "Login successful" });
+    } catch (error) {
+      console.log(error);
+      return res.status(500).json({ message: error.message });
+    }
+  });
+  
 // inventory section
 // get single inventory item
 app.get("/api/inventory/:id", async (req, res) => {
