@@ -9,7 +9,16 @@ app.use(cors());
 app.use(express.json());
 
 // inventory section
-
+// get single inventory item
+app.get("/api/inventory/:id", async (req, res) => {
+    try {
+        const {id} = req.params
+        const getSingleItem = await pool.query("SELECT * FROM inventory WHERE item_id = $1", [id]);
+    } catch (error) {
+        console.log(error);
+        res.json({ message: error });
+    }
+})
 // get all inventory items
 app.get("/api/inventory", async (req, res) => {
   try {
