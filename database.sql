@@ -18,6 +18,7 @@ CREATE TABLE inventory (
 CREATE TABLE product (
     product_id SERIAL PRIMARY KEY,
     product_name VARCHAR(250) NOT NULL,
+    product_category VARCHAR(250) NOT NULL,
     quantity INTEGER NOT NULL,
     product_price INTEGER NOT NULL
 );
