@@ -86,6 +86,7 @@ app.post("/api/add-product", async (req, res) => {
       [product_name, product_category, quantity, product_price]
     );
     res.json(new_product.rows[0]);
+   
     res.status(200);
   } catch (error) {
     console.log(error);
@@ -114,6 +115,7 @@ app.post("/api/add-cafe-branch", async (req, res) => {
       [branch_name, address_branch, contact]
     );
     res.status(200).json(new_branch.rows[0]); // Set the status before sending the JSON response
+    res.json("data added successfully")
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: error.message }); // Set a 500 status code on error
