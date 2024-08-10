@@ -2,11 +2,77 @@ const express = require("express");
 const app = express();
 const pool = require("./db");
 const cors = require("cors");
+const bcrypt = require("bcrypt");
 
 const port = 5000;
 // middleware
 app.use(cors());
 app.use(express.json());
+
+// login cashier section
+// User registration endpoint cashier
+app.post("/api/register-cashier", async (req, res) => {
+  try {
+    const { username, password, contact } = req.body;
+
+    // Hash the password
+    const saltRounds = 10;
+    const password_hash = await bcrypt.hash(password, saltRounds);
+
+    // Insert the new user into the database
+    const newUser = await pool.query(
+      "INSERT INTO user_cashier (username, password_hash, contact) VALUES ($1, $2, $3) RETURNING *",
+      [username, password_hash, contact]
+    );
+
+    res.status(201).json(newUser.rows[0]);
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: error.message });
+  }
+});
+// get all user cashier
+app.get("/api/user-cashier", async (req, res) => {
+    try {
+        const getUserCashier = await pool.query("SELECT * FROM user_cashier");
+        res.json(getUserCashier.rows);
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ message: error.message });
+    }
+})
+
+// User login endpoint
+app.post("/api/login-cashier", async (req, res) => {
+  try {
+    const { username, password } = req.body;
+
+    // Find the user by username
+    const user = await pool.query("SELECT * FROM user_cashier WHERE username = $1", [
+      username,
+    ]);
+
+    if (user.rows.length === 0) {
+      return res.status(400).json({ message: "Invalid username or password" });
+    }
+
+    const validPassword = await bcrypt.compare(
+      password,
+      user.rows[0].password_hash
+    );
+
+    if (!validPassword) {
+      return res.status(400).json({ message: "Invalid username or password" });
+    }else{
+        res.json("login success")
+    }
+
+    res.status(200).json({ message: "Login successful" });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: error.message });
+  }
+});
 
 // inventory section
 // get single inventory item
@@ -86,7 +152,7 @@ app.post("/api/add-product", async (req, res) => {
       [product_name, product_category, quantity, product_price]
     );
     res.json(new_product.rows[0]);
-   
+
     res.status(200);
   } catch (error) {
     console.log(error);
@@ -115,7 +181,7 @@ app.post("/api/add-cafe-branch", async (req, res) => {
       [branch_name, address_branch, contact]
     );
     res.status(200).json(new_branch.rows[0]); // Set the status before sending the JSON response
-    res.json("data added successfully")
+    res.json("data added successfully");
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: error.message }); // Set a 500 status code on error
@@ -161,17 +227,16 @@ app.post("/api/add-order", async (req, res) => {
   try {
     await client.query("BEGIN");
 
-    const { customer_name, order_date, payment_method, items } = req.body;
+    const { customer_name, payment_method, items } = req.body;
 
     // Insert each item into the orders table
     for (const item of items) {
       const { product_id, product_name, quantity_order, price_total } = item;
 
       await client.query(
-        "INSERT INTO orders(customer_name, order_date, payment_method, product_id, product_name, quantity_order, price_total) VALUES($1, $2, $3, $4, $5, $6, $7)",
+        "INSERT INTO orders(customer_name, order_date, payment_method, product_id, product_name, quantity_order, price_total) VALUES($1, CURRENT_TIMESTAMP, $2, $3, $4, $5, $6)",
         [
           customer_name,
-          order_date || new Date(),
           payment_method,
           product_id,
           product_name,
