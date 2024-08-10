@@ -33,14 +33,14 @@ app.post("/api/register-cashier", async (req, res) => {
 });
 // get all user cashier
 app.get("/api/user-cashier", async (req, res) => {
-    try {
-        const getUserCashier = await pool.query("SELECT * FROM user_cashier");
-        res.json(getUserCashier.rows);
-    } catch (error) {
-        console.log(error);
-        res.status(500).json({ message: error.message });
-    }
-})
+  try {
+    const getUserCashier = await pool.query("SELECT * FROM user_cashier");
+    res.json(getUserCashier.rows);
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: error.message });
+  }
+});
 
 // User login endpoint
 app.post("/api/login-cashier", async (req, res) => {
@@ -48,9 +48,10 @@ app.post("/api/login-cashier", async (req, res) => {
     const { username, password } = req.body;
 
     // Find the user by username
-    const user = await pool.query("SELECT * FROM user_cashier WHERE username = $1", [
-      username,
-    ]);
+    const user = await pool.query(
+      "SELECT * FROM user_cashier WHERE username = $1",
+      [username]
+    );
 
     if (user.rows.length === 0) {
       return res.status(400).json({ message: "Invalid username or password" });
@@ -63,14 +64,13 @@ app.post("/api/login-cashier", async (req, res) => {
 
     if (!validPassword) {
       return res.status(400).json({ message: "Invalid username or password" });
-    }else{
-        res.json("login success")
     }
 
-    res.status(200).json({ message: "Login successful" });
+    // If the password is valid, send a success response
+    return res.status(200).json({ message: "Login successful" });
   } catch (error) {
     console.log(error);
-    res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: error.message });
   }
 });
 
