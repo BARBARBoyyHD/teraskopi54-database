@@ -57,9 +57,10 @@ app.post("/api/login-cashier", async (req, res) => {
       return res.status(400).json({ message: "Invalid username or password" });
     }
 
+    const userData = user.rows[0];
     const validPassword = await bcrypt.compare(
       password,
-      user.rows[0].password_hash
+      userData.password_hash
     );
 
     if (!validPassword) {
