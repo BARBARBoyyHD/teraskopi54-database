@@ -110,7 +110,12 @@ app.post("/api/add-cafe-branch", async (req, res) => {
       "INSERT INTO cafe_branch(branch_name,address,contact) VALUES($1,$2,$3) RETURNING *",
       [branch_name, address, contact]
     );
-  } catch (error) {}
+    res.json(new_branch.rows[0]);
+    res.status(200);
+  } catch (error) {
+    console.log(error);
+    res.json({ message: error });
+  }
 });
 
 // orders section
