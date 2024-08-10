@@ -26,7 +26,7 @@ CREATE TABLE product (
 CREATE TABLE cafe_branch (
     id_branch SERIAL PRIMARY KEY,
     branch_name VARCHAR(250) NOT NULL,
-    address VARCHAR(255) NOT NULL,
+    address_branch VARCHAR(255) NOT NULL,
     contact VARCHAR(20) NOT NULL
 );
 

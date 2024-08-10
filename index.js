@@ -108,10 +108,10 @@ app.get("/api/cafe-branch", async (req, res) => {
 // add cafe branch
 app.post("/api/add-cafe-branch", async (req, res) => {
   try {
-    const { branch_name, address, contact } = req.body;
+    const { branch_name, address_branch, contact } = req.body;
     const new_branch = await pool.query(
-      "INSERT INTO cafe_branch(branch_name, address, contact) VALUES($1, $2, $3) RETURNING *",
-      [branch_name, address, contact]
+      "INSERT INTO cafe_branch(branch_name, address_branch, contact) VALUES($1, $2, $3) RETURNING *",
+      [branch_name, address_branch, contact]
     );
     res.status(200).json(new_branch.rows[0]); // Set the status before sending the JSON response
   } catch (error) {
