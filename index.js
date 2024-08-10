@@ -51,16 +51,19 @@ app.post("/api/add-item", async (req, res) => {
 
 // get single product
 app.get("/api/products/:id", async (req, res) => {
-    try {
-        const {id} = req.params;
-        const getSingleProduct = await pool.query("SELECT * FROM product WHERE product_id = $1", [id])
-        res.json(getSingleProduct.rows[0]);
-        res.status(200);
-    } catch (error) {
-        console.log(error);
-        res.json({ message: error });
-    }
-})
+  try {
+    const { id } = req.params;
+    const getSingleProduct = await pool.query(
+      "SELECT * FROM product WHERE product_id = $1",
+      [id]
+    );
+    res.json(getSingleProduct.rows[0]);
+    res.status(200);
+  } catch (error) {
+    console.log(error);
+    res.json({ message: error });
+  }
+});
 
 // get all products
 app.get("/api/products", async (req, res) => {
@@ -107,17 +110,15 @@ app.post("/api/add-cafe-branch", async (req, res) => {
   try {
     const { branch_name, address, contact } = req.body;
     const new_branch = await pool.query(
-      "INSERT INTO cafe_branch(branch_name,address,contact) VALUES($1,$2,$3) RETURNING *",
+      "INSERT INTO cafe_branch(branch_name, address, contact) VALUES($1, $2, $3) RETURNING *",
       [branch_name, address, contact]
     );
-    res.json(new_branch.rows[0]);
-    res.status(200);
+    res.status(200).json(new_branch.rows[0]); // Set the status before sending the JSON response
   } catch (error) {
     console.log(error);
-    res.json({ message: error });
+    res.status(500).json({ message: error.message }); // Set a 500 status code on error
   }
 });
-
 // orders section
 
 // Get all orders with their items
