@@ -11,14 +11,17 @@ app.use(express.json());
 // inventory section
 // get single inventory item
 app.get("/api/inventory/:id", async (req, res) => {
-    try {
-        const {id} = req.params
-        const getSingleItem = await pool.query("SELECT * FROM inventory WHERE item_id = $1", [id]);
-    } catch (error) {
-        console.log(error);
-        res.json({ message: error });
-    }
-})
+  try {
+    const { id } = req.params;
+    const getSingleItem = await pool.query(
+      "SELECT * FROM inventory WHERE item_id = $1",
+      [id]
+    );
+  } catch (error) {
+    console.log(error);
+    res.json({ message: error });
+  }
+});
 // get all inventory items
 app.get("/api/inventory", async (req, res) => {
   try {
@@ -59,10 +62,11 @@ app.get("/api/products", async (req, res) => {
 // add product
 app.post("/api/add-product", async (req, res) => {
   try {
-    const { product_name, product_category,quantity, product_price } = req.body;
+    const { product_name, product_category, quantity, product_price } =
+      req.body;
     const new_product = await pool.query(
       "INSERT INTO product(product_name,product_category,quantity,product_price) VALUES($1,$2,$3,$4) RETURNING *",
-      [product_name, quantity, product_price]
+      [product_name, product_category, quantity, product_price]
     );
     res.json(new_product.rows[0]);
     res.status(200);
