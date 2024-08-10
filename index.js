@@ -163,6 +163,34 @@ app.get("/api/inventory", async (req, res) => {
     res.json({ message: error });
   }
 });
+// delete item inventory
+app.delete("/api/inventory/:id", async (req, res) => {
+    try {
+        const {id} = req.params
+        const deleteInventory = await pool.query("DELETE FROM inventory WHERE item_id = $1", [id])
+        res.json(deleteInventory.rows[0])
+        res.status(200)
+        res.json("Item Deleted")
+    } catch (error) {
+        console.log(error);
+        res.json({ message: error });
+    }
+})
+
+// edit item
+app.put("/api/inventory/:id", async (req, res) => {
+    try {
+        const {id} = req.params
+        const editInventory = await pool.query("UPDATE FROM inventory WHERE item_id = $1", [id])
+        res.json(editInventory.rows[0])
+        res.status(200)
+        res.json("item updated")
+    } catch (error) {
+        res.json({ message: error });
+        res.status(500)
+    }
+})
+
 // add item inventory
 app.post("/api/add-item", async (req, res) => {
   try {
