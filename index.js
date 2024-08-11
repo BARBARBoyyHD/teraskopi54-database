@@ -249,7 +249,7 @@ app.get("/api/products", async (req, res) => {
   }
 });
 // delete product
-app.delete("/api/product/:id", async (req, res) => {
+app.delete("/api/products/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const deleteProduct = await pool.query(
