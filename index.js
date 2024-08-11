@@ -262,7 +262,7 @@ app.delete("/api/products/:id", async (req, res) => {
   }
 });
 // edit product
-app.put("/api/product/:id", async (req, res) => {
+app.put("/api/products/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const { product_name, product_category, quantity, product_price } =
