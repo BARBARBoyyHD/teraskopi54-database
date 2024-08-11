@@ -337,7 +337,7 @@ app.put("/api/cafe-branch/:id", async (req, res) => {
 app.delete("/api/cafe-branch/:id", async (req, res) => {
   try {
     const {id} = req.params
-    const deleteBranch = await pool.query("DELETE FROM cafe_branch WHERE branch_id = $1", [id])
+    const deleteBranch = await pool.query("DELETE FROM cafe_branch WHERE id_branch = $1", [id])
     res.status(200).json("Branch Deleted");
   } catch (error) {
     console.log(error);
