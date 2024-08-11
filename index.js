@@ -313,6 +313,37 @@ app.get("/api/cafe-branch", async (req, res) => {
     res.json({ message: error });
   }
 });
+// edit cafe branch
+app.put("/api/cafe-branch/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { branch_name, address_branch, contact } = req.body;
+    const editBranch = await pool.query(
+      "UPDATE cafe_branch SET branch_name = $1, address_branch = $2, contact = $3 WHERE branch_id = $4 RETURNING *",
+      [branch_name, address_branch, contact, id]
+    );
+    if (editBranch.rowCount === 0) {
+      return res.status(404).json({ message: "Item not found" });
+    }
+
+    res.status(200);
+    res.json("branch updated");
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: error.message });
+  }
+});
+// delete cafe branch
+app.delete("/api/cafe-branch/:id", async (req, res) => {
+  try {
+    const {id} = req.params
+    const deleteBranch = await pool.query("DELETE FROM cafe_branch WHERE branch_id = $1", [id])
+    res.status(200).json("Branch Deleted");
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: error.message });
+  }
+})
 
 // add cafe branch
 app.post("/api/add-cafe-branch", async (req, res) => {
