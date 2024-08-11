@@ -98,47 +98,47 @@ app.post("/api/register-stock", async (req, res) => {
 });
 // get all user stock
 app.get("/api/user-stock", async (req, res) => {
-    try {
-      const getUserCashier = await pool.query("SELECT * FROM user_stock");
-      res.json(getUserCashier.rows);
-    } catch (error) {
-      console.log(error);
-      res.status(500).json({ message: error.message });
-    }
-  });
+  try {
+    const getUserCashier = await pool.query("SELECT * FROM user_stock");
+    res.json(getUserCashier.rows);
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: error.message });
+  }
+});
 // login stock
 app.post("/api/login-stock", async (req, res) => {
-    try {
-      const { username, password } = req.body;
-  
-      // Find the user by username
-      const user = await pool.query(
-        "SELECT * FROM user_stock WHERE username = $1",
-        [username]
-      );
-  
-      if (user.rows.length === 0) {
-        return res.status(400).json({ message: "Invalid username or password" });
-      }
-  
-      const userData = user.rows[0];
-      const validPassword = await bcrypt.compare(
-        password,
-        userData.password_hash
-      );
-  
-      if (!validPassword) {
-        return res.status(400).json({ message: "Invalid username or password" });
-      }
-  
-      // If the password is valid, send a success response
-      return res.status(200).json({ message: "Login successful" });
-    } catch (error) {
-      console.log(error);
-      return res.status(500).json({ message: error.message });
+  try {
+    const { username, password } = req.body;
+
+    // Find the user by username
+    const user = await pool.query(
+      "SELECT * FROM user_stock WHERE username = $1",
+      [username]
+    );
+
+    if (user.rows.length === 0) {
+      return res.status(400).json({ message: "Invalid username or password" });
     }
-  });
-  
+
+    const userData = user.rows[0];
+    const validPassword = await bcrypt.compare(
+      password,
+      userData.password_hash
+    );
+
+    if (!validPassword) {
+      return res.status(400).json({ message: "Invalid username or password" });
+    }
+
+    // If the password is valid, send a success response
+    return res.status(200).json({ message: "Login successful" });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ message: error.message });
+  }
+});
+
 // inventory section
 // get single inventory item
 app.get("/api/inventory/:id", async (req, res) => {
@@ -166,41 +166,43 @@ app.get("/api/inventory", async (req, res) => {
 });
 // delete item inventory
 app.delete("/api/inventory/:id", async (req, res) => {
-    try {
-        const {id} = req.params
-        const deleteInventory = await pool.query("DELETE FROM inventory WHERE item_id = $1", [id])
-        res.json(deleteInventory.rows[0])
-        res.status(200)
-        res.json("Item Deleted")
-    } catch (error) {
-        console.log(error);
-        res.json({ message: error });
-    }
-})
+  try {
+    const { id } = req.params;
+    const deleteInventory = await pool.query(
+      "DELETE FROM inventory WHERE item_id = $1",
+      [id]
+    );
+    res.json(deleteInventory.rows[0]);
+    res.status(200);
+    res.json("Item Deleted");
+  } catch (error) {
+    console.log(error);
+    res.json({ message: error });
+  }
+});
 
 // edit inventory
 app.put("/api/inventory/:id", async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { item_name, quantity, price_per_pcs } = req.body; // assuming you're updating these fields
+  try {
+    const { id } = req.params;
+    const { item_name, quantity, price_per_pcs } = req.body; // assuming you're updating these fields
 
-        // SQL query with SET clause
-        const editInventory = await pool.query(
-            "UPDATE inventory SET item_name = $1, quantity = $2, price_per_pcs = $3 WHERE item_id = $4 RETURNING *",
-            [item_name, quantity,price_per_pcs, id]
-        );
-      
-        if (editInventory.rowCount === 0) {
-            return res.status(404).json({ message: "Item not found" });
-        }
+    // SQL query with SET clause
+    const editInventory = await pool.query(
+      "UPDATE inventory SET item_name = $1, quantity = $2, price_per_pcs = $3 WHERE item_id = $4 RETURNING *",
+      [item_name, quantity, price_per_pcs, id]
+    );
 
-        res.status(200).json("item was updated successfully");
-    } catch (error) {
-        console.error(error); // Log the error for debugging
-        res.status(500).json({ message: "Internal Server Error" });
+    if (editInventory.rowCount === 0) {
+      return res.status(404).json({ message: "Item not found" });
     }
-});
 
+    res.status(200).json("item was updated successfully");
+  } catch (error) {
+    console.error(error); // Log the error for debugging
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
 
 // add item inventory
 app.post("/api/add-item", async (req, res) => {
@@ -246,6 +248,41 @@ app.get("/api/products", async (req, res) => {
     res.json({ message: error });
   }
 });
+// delete product
+app.delete("/api/product/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const deleteProduct = await pool.query(
+      "DELETE FROM product WHERE product_id = $1",
+      [id]
+    );
+    res.status(200).json("Product Deleted");
+  } catch (error) {
+    res.json({ message: error });
+  }
+});
+// edit product
+app.put("/api/product/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { product_name, product_category, quantity, product_price } =
+      req.body; // assuming you're updating these fields
+    const editProduct = await pool.query(
+      "UPDATE FROM product SET product_name = $1, product_category = $2, quantity = $3, product_price = $4 WHERE product_id = $5 RETURNING *",
+      [product_name, product_category, quantity, product_price, id]
+    );
+
+    if (editProduct.rowCount === 0) {
+      return res.status(404).json({ message: "Item not found" });
+    }
+
+    res.status(200).json("item was updated successfully");
+  } catch (error) {
+    console.error(error); // Log the error for debugging
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
 // add product
 app.post("/api/add-product", async (req, res) => {
   try {
@@ -263,6 +300,7 @@ app.post("/api/add-product", async (req, res) => {
     res.json({ message: error });
   }
 });
+
 // cafe branch section
 
 // get all cafe branch
