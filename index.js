@@ -268,7 +268,7 @@ app.put("/api/products/:id", async (req, res) => {
     const { product_name, product_category, quantity, product_price } =
       req.body; // assuming you're updating these fields
     const editProduct = await pool.query(
-      "UPDATE FROM product SET product_name = $1, product_category = $2, quantity = $3, product_price = $4 WHERE product_id = $5 RETURNING *",
+      "UPDATE product SET product_name = $1, product_category = $2, quantity = $3, product_price = $4 WHERE product_id = $5 RETURNING *",
       [product_name, product_category, quantity, product_price, id]
     );
 
