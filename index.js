@@ -319,7 +319,7 @@ app.put("/api/cafe-branch/:id", async (req, res) => {
     const { id } = req.params;
     const { branch_name, address_branch, contact } = req.body;
     const editBranch = await pool.query(
-      "UPDATE cafe_branch SET branch_name = $1, address_branch = $2, contact = $3 WHERE branch_id = $4 RETURNING *",
+      "UPDATE cafe_branch SET branch_name = $1, address_branch = $2, contact = $3 WHERE id_branch = $4 RETURNING *",
       [branch_name, address_branch, contact, id]
     );
     if (editBranch.rowCount === 0) {
