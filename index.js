@@ -178,24 +178,23 @@ app.delete("/api/inventory/:id", async (req, res) => {
     }
 })
 
-// edit item
+// edit inventory
 app.put("/api/inventory/:id", async (req, res) => {
     try {
         const { id } = req.params;
-        const { itemName, quantity, price_per_pcs } = req.body; // assuming you're updating these fields
+        const { item_name, quantity, price_per_pcs } = req.body; // assuming you're updating these fields
 
         // SQL query with SET clause
         const editInventory = await pool.query(
             "UPDATE inventory SET item_name = $1, quantity = $2, price_per_pcs = $3 WHERE item_id = $4 RETURNING *",
-            [itemName, quantity,price_per_pcs, id]
+            [item_name, quantity,price_per_pcs, id]
         );
-        
-
+      
         if (editInventory.rowCount === 0) {
             return res.status(404).json({ message: "Item not found" });
         }
 
-        res.status(200).json({ message: "Item updated", item: editInventory.rows[0] });
+        res.status(200).json("item was updated successfully");
     } catch (error) {
         console.error(error); // Log the error for debugging
         res.status(500).json({ message: "Internal Server Error" });
