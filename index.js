@@ -189,7 +189,7 @@ app.put("/api/inventory/:id", async (req, res) => {
             "UPDATE inventory SET item_name = $1, quantity = $2, price_per_pcs = $3 WHERE item_id = $4 RETURNING *",
             [itemName, quantity,price_per_pcs, id]
         );
-        res.json
+        
 
         if (editInventory.rowCount === 0) {
             return res.status(404).json({ message: "Item not found" });
