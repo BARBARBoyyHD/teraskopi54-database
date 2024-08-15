@@ -265,11 +265,17 @@ app.delete("/api/products/:id", async (req, res) => {
 app.put("/api/products/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const { product_name, product_category, quantity, product_price } =
-      req.body; // assuming you're updating these fields
+
+    const {
+      product_name,
+      product_category,
+      quantity,
+      product_price,
+      image_url,
+    } = req.body; // assuming you're updating these fields
     const editProduct = await pool.query(
-      "UPDATE product SET product_name = $1, product_category = $2, quantity = $3, product_price = $4 WHERE product_id = $5 RETURNING *",
-      [product_name, product_category, quantity, product_price, id]
+      "UPDATE product SET product_name = $1, product_category = $2, quantity = $3, product_price = $4 , image_url = $5 WHERE product_id = $6 RETURNING *",
+      [product_name, product_category, quantity, product_price, image_url, id]
     );
 
     if (editProduct.rowCount === 0) {
@@ -286,18 +292,21 @@ app.put("/api/products/:id", async (req, res) => {
 // add product
 app.post("/api/add-product", async (req, res) => {
   try {
-    const { product_name, product_category, quantity, product_price } =
-      req.body;
+    const {
+      product_name,
+      product_category,
+      quantity,
+      product_price,
+      image_url,
+    } = req.body;
     const new_product = await pool.query(
-      "INSERT INTO product(product_name,product_category,quantity,product_price) VALUES($1,$2,$3,$4) RETURNING *",
-      [product_name, product_category, quantity, product_price]
+      "INSERT INTO product(product_name, product_category, quantity, product_price, image_url) VALUES($1, $2, $3, $4, $5) RETURNING *",
+      [product_name, product_category, quantity, product_price, image_url]
     );
-    res.json(new_product.rows[0]);
-
-    res.status(200);
+    res.status(200).json(new_product.rows[0]);
   } catch (error) {
     console.log(error);
-    res.json({ message: error });
+    res.status(500).json({ message: error.message });
   }
 });
 
@@ -336,14 +345,17 @@ app.put("/api/cafe-branch/:id", async (req, res) => {
 // delete cafe branch
 app.delete("/api/cafe-branch/:id", async (req, res) => {
   try {
-    const {id} = req.params
-    const deleteBranch = await pool.query("DELETE FROM cafe_branch WHERE id_branch = $1", [id])
+    const { id } = req.params;
+    const deleteBranch = await pool.query(
+      "DELETE FROM cafe_branch WHERE id_branch = $1",
+      [id]
+    );
     res.status(200).json("Branch Deleted");
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: error.message });
   }
-})
+});
 
 // add cafe branch
 app.post("/api/add-cafe-branch", async (req, res) => {
