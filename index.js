@@ -277,7 +277,7 @@ app.put("/api/products/:id", async (req, res) => {
       "UPDATE product SET product_name = $1, product_category = $2, quantity = $3, product_price = $4 , image_url = $5 WHERE product_id = $6 RETURNING *",
       [product_name, product_category, quantity, product_price, image_url, id]
     );
-
+    res.status(200).json(editProduct.rows[0]);
     if (editProduct.rowCount === 0) {
       return res.status(404).json({ message: "Item not found" });
     }
