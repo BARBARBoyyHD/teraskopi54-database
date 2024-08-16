@@ -6,7 +6,7 @@ const bcrypt = require("bcrypt");
 const multer = require("multer");
 const path = require("path");
 
-// Configure storage for multer
+// Define storage for the images
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, "uploads/"); // Folder where images will be stored
@@ -19,7 +19,6 @@ const storage = multer.diskStorage({
 const upload = multer({
   storage: storage,
   fileFilter: (req, file, cb) => {
-    // Accept only images
     if (file.mimetype.startsWith("image/")) {
       cb(null, true);
     } else {
@@ -316,7 +315,7 @@ app.put("/api/products/:id", async (req, res) => {
 
 // add product
 // Add product with image
-app.post("/api/add-product", upload.single("image"), async (req, res) => {
+app.post("/api/add-product", upload.single("file"), async (req, res) => {
   try {
     const { product_name, product_category, quantity, product_price } =
       req.body;
@@ -334,19 +333,6 @@ app.post("/api/add-product", upload.single("image"), async (req, res) => {
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: error.message });
-  }
-});
-
-// cafe branch section
-
-// get all cafe branch
-app.get("/api/cafe-branch", async (req, res) => {
-  try {
-    const getAllbranches = await pool.query("SELECT * FROM cafe_branch");
-    res.json(getAllbranches.rows);
-  } catch (error) {
-    console.log(error);
-    res.json({ message: error });
   }
 });
 // edit cafe branch
