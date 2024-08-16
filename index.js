@@ -11,21 +11,23 @@ const storage = multer.diskStorage({
     cb(null, "uploads/");
   },
   filename: (req, file, cb) => {
-    cb(null, file.fieldname + '-' + Date.now() + path.extname(file.originalname));
+    cb(
+      null,
+      file.fieldname + "-" + Date.now() + path.extname(file.originalname)
+    );
   },
 });
 
 const upload = multer({
-  limits: { fileSize: 1024 * 1024 * 5 }, // 5 MB limit
+  limits: { fileSize: 1024 * 1024 * 5 },
+  storage: { storage }, // 5 MB limit
 });
-
 
 const port = 5000;
 // middleware
 app.use(cors());
 app.use(express.json());
 app.use("/uploads", express.static("uploads"));
-
 
 // login cashier section
 // User registration endpoint cashier
@@ -311,13 +313,9 @@ app.put("/api/products/:id", async (req, res) => {
 // Add product with image
 app.post("/api/add-product", upload.single("image"), async (req, res) => {
   try {
-    const {
-      product_name,
-      product_category,
-      quantity,
-      product_price,
-    } = req.body;
-    
+    const { product_name, product_category, quantity, product_price } =
+      req.body;
+
     // Get the file path for the uploaded image
     const image_url = req.file ? `/uploads/${req.file.filename}` : null;
 
