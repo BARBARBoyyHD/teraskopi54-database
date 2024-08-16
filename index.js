@@ -315,7 +315,7 @@ app.put("/api/products/:id", async (req, res) => {
 
 // add product
 // Add product with image
-app.post("/api/add-product", upload.single("file"), async (req, res) => {
+app.post("/api/add-product", upload.single("image"), async (req, res) => {
   try {
     const { product_name, product_category, quantity, product_price } =
       req.body;
