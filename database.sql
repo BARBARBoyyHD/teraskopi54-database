@@ -20,14 +20,14 @@ CREATE TABLE inventory (
     quantity INTEGER NOT NULL,
     price_per_pcs INTEGER NOT NULL
 );
-CREATE TABLE product (
-  product_id SERIAL PRIMARY KEY,
-  product_name VARCHAR(255) NOT NULL,
-  product_category VARCHAR(255),
-  quantity INTEGER,
-  product_price DECIMAL,
-  image_url VARCHAR(255) 
-);
+        CREATE TABLE product (
+        product_id SERIAL PRIMARY KEY,
+        product_name VARCHAR(255) NOT NULL,
+        product_category VARCHAR(255),
+        quantity INTEGER,
+        product_price DECIMAL,
+        image_url VARCHAR(255) 
+        );
 
 
 CREATE TABLE cafe_branch (

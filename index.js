@@ -6,22 +6,17 @@ const bcrypt = require("bcrypt");
 const multer = require("multer");
 const path = require("path");
 
+// Configure storage for multer
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, "uploads/");
+    cb(null, "uploads/"); // Folder where images will be stored
   },
   filename: (req, file, cb) => {
-    cb(
-      null,
-      file.fieldname + "-" + Date.now() + path.extname(file.originalname)
-    );
+    cb(null, Date.now() + path.extname(file.originalname)); // Append timestamp to avoid filename collisions
   },
 });
 
-const upload = multer({
-  limits: { fileSize: 1024 * 1024 * 5 },
-  storage: { storage }, // 5 MB limit
-});
+const upload = multer({ storage: storage });
 
 const port = 5000;
 // middleware
