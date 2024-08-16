@@ -15,7 +15,9 @@ const storage = multer.diskStorage({
   },
 });
 
-const upload = multer({ storage: storage });
+const upload = multer({
+  limits: { fileSize: 1024 * 1024 * 5 }, // 5 MB limit
+});
 
 
 const port = 5000;
