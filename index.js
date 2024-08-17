@@ -31,7 +31,7 @@ const port = 5000;
 // middleware
 app.use(cors());
 app.use(express.json());
-// app.use("/uploads", express.static("uploads"));
+app.use(express.static('uploads'))
 
 // login cashier section
 // User registration endpoint cashier
@@ -321,7 +321,7 @@ app.post("/api/add-product", upload.single("image"), async (req, res) => {
       req.body;
 
     // Get the file path for the uploaded image
-    const image_url = req.file ? `/uploads/${req.file.filename}` : null;
+    const image_url = req.file.filename
 
     // Insert product data into the database
     const new_product = await pool.query(
