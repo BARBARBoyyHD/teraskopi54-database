@@ -26,7 +26,7 @@ CREATE TABLE inventory (
         product_category VARCHAR(255),
         quantity INTEGER,
         product_price DECIMAL,
-        image_url NOT NULL 
+        image_url VARCHAR(255)NOT NULL 
         );
 
 create table image(
