@@ -1,11 +1,12 @@
-require('dotenv').config();
-const {Pool} = require('pg');
+const {createPool} = require("mysql");
 
-const pool = new Pool({
-    connectionString: process.env.POSTGRES_URL,
-    ssl: {
-        rejectUnauthorized: false
-    }
+const pool = createPool({
+    host: "localhost",
+    user: "root",
+    password: "",
+    database: "teraskopi54",
+    connectionLimit: 10
 })
+
 
 module.exports = pool

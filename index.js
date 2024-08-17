@@ -37,14 +37,22 @@ app.post("/upload-images", upload.single("image"), async (req, res) => {
     }
 
     const image_path = req.file.filename;
-    const query = "INSERT INTO image (image_path) VALUES ($1) RETURNING *"; // Insert the image path into the database
+    const query = "INSERT INTO image (image_path) VALUES (?)"; // Insert the image path into the database
 
-    const result = await pool.query(query, [image_path]);
+    pool.query(query, [image_path], (error, results) => {
+      if (error) {
+        console.error(error.message);
+        return res.status(500).json({ error: "Server error" });
+      }
 
-    // Send back the inserted data as a response
-    res.json({
-      message: "Image uploaded successfully!",
-      image: result.rows[0],
+      // Send back the inserted data as a response
+      res.json({
+        message: "Image uploaded successfully!",
+        image: {
+          id: results.insertId, // MySQL provides insertId for the newly inserted row
+          image_path: image_path,
+        },
+      });
     });
   } catch (err) {
     console.error(err.message);
@@ -63,26 +71,38 @@ app.post("/api/register-cashier", async (req, res) => {
     const password_hash = await bcrypt.hash(password, saltRounds);
 
     // Insert the new user into the database
-    const newUser = await pool.query(
-      "INSERT INTO user_cashier (username, password_hash, contact) VALUES ($1, $2, $3) RETURNING *",
-      [username, password_hash, contact]
-    );
+    const query =
+      "INSERT INTO user_cashier (username, password_hash, contact) VALUES (?, ?, ?)";
 
-    res.status(201).json(newUser.rows[0]);
+    pool.query(query, [username, password_hash, contact], (error, results) => {
+      if (error) {
+        console.error(error.message);
+        return res.status(500).json({ message: "Internal Server Error" });
+      }
+
+      // Send back the inserted data as a response
+      res.status(201).json({
+        id: results.insertId, // MySQL provides insertId for the newly inserted row
+        username,
+        contact,
+      });
+    });
   } catch (error) {
-    console.log(error);
+    console.error(error.message);
     res.status(500).json({ message: error.message });
   }
 });
+
 // get all user cashier
-app.get("/api/user-cashier", async (req, res) => {
-  try {
-    const getUserCashier = await pool.query("SELECT * FROM user_cashier");
-    res.json(getUserCashier.rows);
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: error.message });
-  }
+app.get("/api/user-cashier", (req, res) => {
+  pool.query("SELECT * FROM user_cashier", (error, results) => {
+    if (error) {
+      console.error(error);
+      return res.status(500).json({ message: "Internal Server Error" });
+    }
+    // Send the results directly
+    res.status(200).json(results);
+  });
 });
 
 // User login endpoint
@@ -91,29 +111,36 @@ app.post("/api/login-cashier", async (req, res) => {
     const { username, password } = req.body;
 
     // Find the user by username
-    const user = await pool.query(
-      "SELECT * FROM user_cashier WHERE username = $1",
-      [username]
-    );
+    const query = "SELECT * FROM user_cashier WHERE username = ?";
+    pool.query(query, [username], async (error, results) => {
+      if (error) {
+        console.error(error.message);
+        return res.status(500).json({ message: "Internal Server Error" });
+      }
 
-    if (user.rows.length === 0) {
-      return res.status(400).json({ message: "Invalid username or password" });
-    }
+      if (results.length === 0) {
+        return res
+          .status(400)
+          .json({ message: "Invalid username or password" });
+      }
 
-    const userData = user.rows[0];
-    const validPassword = await bcrypt.compare(
-      password,
-      userData.password_hash
-    );
+      const userData = results[0];
+      const validPassword = await bcrypt.compare(
+        password,
+        userData.password_hash
+      );
 
-    if (!validPassword) {
-      return res.status(400).json({ message: "Invalid username or password" });
-    }
+      if (!validPassword) {
+        return res
+          .status(400)
+          .json({ message: "Invalid username or password" });
+      }
 
-    // If the password is valid, send a success response
-    return res.status(200).json({ message: "Login successful" });
+      // If the password is valid, send a success response
+      return res.status(200).json({ message: "Login successful" });
+    });
   } catch (error) {
-    console.log(error);
+    console.error(error.message);
     return res.status(500).json({ message: error.message });
   }
 });
@@ -129,7 +156,7 @@ app.post("/api/register-stock", async (req, res) => {
 
     // Insert the new user into the database
     const newUser = await pool.query(
-      "INSERT INTO user_stock (username, password_hash, contact) VALUES ($1, $2, $3) RETURNING *",
+      "INSERT INTO user_stock (username, password_hash, contact) VALUES (?, ?, ?) RETURNING *",
       [username, password_hash, contact]
     );
 
@@ -156,7 +183,7 @@ app.post("/api/login-stock", async (req, res) => {
 
     // Find the user by username
     const user = await pool.query(
-      "SELECT * FROM user_stock WHERE username = $1",
+      "SELECT * FROM user_stock WHERE username = ?",
       [username]
     );
 
@@ -188,7 +215,7 @@ app.get("/api/inventory/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const getSingleItem = await pool.query(
-      "SELECT * FROM inventory WHERE item_id = $1",
+      "SELECT * FROM inventory WHERE item_id = ?",
       [id]
     );
     res.json(getSingleItem.rows[0]);
@@ -198,69 +225,97 @@ app.get("/api/inventory/:id", async (req, res) => {
   }
 });
 // get all inventory items
-app.get("/api/inventory", async (req, res) => {
-  try {
-    const getAllitems = await pool.query("SELECT * FROM inventory");
-    res.json(getAllitems.rows);
-  } catch (error) {
-    console.log(error);
-    res.json({ message: error });
-  }
+app.get("/api/inventory", (req, res) => {
+  // Execute the query to get all items from the inventory
+  pool.query("SELECT * FROM inventory", (error, results) => {
+    if (error) {
+      console.error("Error fetching inventory items:", error); // Log detailed error to the console
+      return res.status(500).json({
+        message: "Failed to fetch inventory items",
+        error: error.message || error,
+      });
+    }
+
+    // Send the results as JSON response
+    res.status(200).json(results); // `results` contains the rows of data
+  });
 });
+
 // delete item inventory
-app.delete("/api/inventory/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const deleteInventory = await pool.query(
-      "DELETE FROM inventory WHERE item_id = $1",
-      [id]
-    );
-    res.json(deleteInventory.rows[0]);
-    res.status(200);
-    res.json("Item Deleted");
-  } catch (error) {
-    console.log(error);
-    res.json({ message: error });
-  }
+app.delete("/api/inventory/:id", (req, res) => {
+  const { id } = req.params;
+  pool.query(
+    "DELETE FROM inventory WHERE item_id = ?",
+    [id],
+    (error, result) => {
+      if (error) {
+        console.log(error);
+        res.status(500).json({ message: "Internal Server Error" });
+      } else {
+        res.status(200).json("item was deleted successfully");
+      }
+    }
+  );
 });
 
 // edit inventory
-app.put("/api/inventory/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { item_name, quantity, price_per_pcs } = req.body; // assuming you're updating these fields
+app.put("/api/inventory/:id", (req, res) => {
+  const { id } = req.params;
+  const { item_name, quantity, price_per_pcs } = req.body;
 
-    // SQL query with SET clause
-    const editInventory = await pool.query(
-      "UPDATE inventory SET item_name = $1, quantity = $2, price_per_pcs = $3 WHERE item_id = $4 RETURNING *",
-      [item_name, quantity, price_per_pcs, id]
-    );
-
-    if (editInventory.rowCount === 0) {
-      return res.status(404).json({ message: "Item not found" });
+  // SQL query with SET clause
+  pool.query(
+    "UPDATE inventory SET item_name = ?, quantity = ?, price_per_pcs = ? WHERE item_id = ?",
+    [item_name, quantity, price_per_pcs, id],
+    (error, result) => {
+      if (error) {
+        console.error(error);
+        res.status(500).json({ message: "Internal Server Error" });
+      } else if (result.affectedRows === 0) {
+        // If no rows were affected, the ID may not exist
+        res.status(404).json({ message: "Item not found" });
+      } else {
+        res.status(200).json({ message: "Item updated successfully" });
+      }
     }
-
-    res.status(200).json("item was updated successfully");
-  } catch (error) {
-    console.error(error); // Log the error for debugging
-    res.status(500).json({ message: "Internal Server Error" });
-  }
+  );
 });
 
 // add item inventory
-app.post("/api/add-item", async (req, res) => {
-  try {
-    const { item_name, quantity, price_per_pcs } = req.body;
-    const new_item = await pool.query(
-      "INSERT INTO inventory(item_name,quantity,price_per_pcs) VALUES($1,$2,$3) RETURNING *",
-      [item_name, quantity, price_per_pcs]
-    );
-    res.json(new_item.rows[0]);
-    res.status(200);
-  } catch (error) {
-    console.log(error);
-    res.json({ message: error });
-  }
+app.post("/api/add-item", (req, res) => {
+  const { item_name, quantity, price_per_pcs } = req.body;
+
+  // Insert item into the database using the MySQL pool directly
+  pool.query(
+    "INSERT INTO inventory (item_name, quantity, price_per_pcs) VALUES (?, ?, ?)",
+    [item_name, quantity, price_per_pcs],
+    (error, result) => {
+      if (error) {
+        console.error("Error inserting item:", error); // Log detailed error to the console
+        return res.status(500).json({
+          message: "Failed to add item",
+          error: error.message || error,
+        });
+      }
+
+      // Retrieve the last inserted item
+      pool.query(
+        "SELECT * FROM inventory WHERE item_id = ?",
+        [result.insertId],
+        (error, rows) => {
+          if (error) {
+            console.error("Error fetching item:", error); // Log detailed error to the console
+            return res.status(500).json({
+              message: "Failed to fetch item",
+              error: error.message || error,
+            });
+          }
+
+          res.status(200).json(rows[0]); // Return the inserted item
+        }
+      );
+    }
+  );
 });
 // prodcut section
 
@@ -269,7 +324,7 @@ app.get("/api/products/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const getSingleProduct = await pool.query(
-      "SELECT * FROM product WHERE product_id = $1",
+      "SELECT * FROM product WHERE product_id = ?",
       [id]
     );
     res.json(getSingleProduct.rows[0]);
@@ -296,7 +351,7 @@ app.delete("/api/products/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const deleteProduct = await pool.query(
-      "DELETE FROM product WHERE product_id = $1",
+      "DELETE FROM product WHERE product_id = ?",
       [id]
     );
     res.status(200).json("Product Deleted");
@@ -317,7 +372,7 @@ app.put("/api/products/:id", async (req, res) => {
       image_url,
     } = req.body; // assuming you're updating these fields
     const editProduct = await pool.query(
-      "UPDATE product SET product_name = $1, product_category = $2, quantity = $3, product_price = $4 , image_url = $5 WHERE product_id = $6 RETURNING *",
+      "UPDATE product SET product_name = ?, product_category = ?, quantity = ?, product_price = ? , image_url = $5 WHERE product_id = $6 RETURNING *",
       [product_name, product_category, quantity, product_price, image_url, id]
     );
     res.status(200).json(editProduct.rows[0]);
@@ -344,7 +399,7 @@ app.post("/api/add-product", upload.single("image"), async (req, res) => {
 
     // Insert product data into the database
     const new_product = await pool.query(
-      "INSERT INTO product(product_name, product_category, quantity, product_price, image_url) VALUES($1, $2, $3, $4, $5) RETURNING *",
+      "INSERT INTO product(product_name, product_category, quantity, product_price, image_url) VALUES(?, ?, ?, ?, $5) RETURNING *",
       [product_name, product_category, quantity, product_price, image_url]
     );
 
@@ -360,7 +415,7 @@ app.put("/api/cafe-branch/:id", async (req, res) => {
     const { id } = req.params;
     const { branch_name, address_branch, contact } = req.body;
     const editBranch = await pool.query(
-      "UPDATE cafe_branch SET branch_name = $1, address_branch = $2, contact = $3 WHERE id_branch = $4 RETURNING *",
+      "UPDATE cafe_branch SET branch_name = ?, address_branch = ?, contact = ? WHERE id_branch = ? RETURNING *",
       [branch_name, address_branch, contact, id]
     );
     if (editBranch.rowCount === 0) {
@@ -379,7 +434,7 @@ app.delete("/api/cafe-branch/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const deleteBranch = await pool.query(
-      "DELETE FROM cafe_branch WHERE id_branch = $1",
+      "DELETE FROM cafe_branch WHERE id_branch = ?",
       [id]
     );
     res.status(200).json("Branch Deleted");
@@ -394,7 +449,7 @@ app.post("/api/add-cafe-branch", async (req, res) => {
   try {
     const { branch_name, address_branch, contact } = req.body;
     const new_branch = await pool.query(
-      "INSERT INTO cafe_branch(branch_name, address_branch, contact) VALUES($1, $2, $3) RETURNING *",
+      "INSERT INTO cafe_branch(branch_name, address_branch, contact) VALUES(?, ?, ?) RETURNING *",
       [branch_name, address_branch, contact]
     );
     res.status(200).json(new_branch.rows[0]); // Set the status before sending the JSON response
@@ -451,7 +506,7 @@ app.post("/api/add-order", async (req, res) => {
       const { product_id, product_name, quantity_order, price_total } = item;
 
       await client.query(
-        "INSERT INTO orders(customer_name, order_date, payment_method, product_id, product_name, quantity_order, price_total) VALUES($1, CURRENT_TIMESTAMP, $2, $3, $4, $5, $6)",
+        "INSERT INTO orders(customer_name, order_date, payment_method, product_id, product_name, quantity_order, price_total) VALUES(?, CURRENT_TIMESTAMP, ?, ?, ?, $5, $6)",
         [
           customer_name,
           payment_method,
