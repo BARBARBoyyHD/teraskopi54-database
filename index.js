@@ -9,22 +9,15 @@ const path = require("path");
 // Define storage for the images
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, "uploads/"); // Folder where images will be stored
+    cb(null, "uploads"); // Folder where images will be stored
   },
   filename: (req, file, cb) => {
-    cb(null, Date.now() + path.extname(file.originalname)); // Append timestamp to avoid filename collisions
+    cb(null, file.fieldname+ "-" +Date.now() + path.extname(file.originalname)); // Append timestamp to avoid filename collisions
   },
 });
 
 const upload = multer({
-  storage: storage,
-  fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith("image/")) {
-      cb(null, true);
-    } else {
-      cb(new Error("Only image files are allowed!"), false);
-    }
-  },
+  storage: storage
 });
 
 const port = 5000;
@@ -32,6 +25,13 @@ const port = 5000;
 app.use(cors());
 app.use(express.json());
 app.use(express.static('uploads'))
+
+app.post("/upload-images",upload.single('image'),(req,res)=>{
+  console.log(req.file);
+  res.json(req.file)
+})
+
+
 
 // login cashier section
 // User registration endpoint cashier
@@ -321,14 +321,14 @@ app.post("/api/add-product", upload.single("image"), async (req, res) => {
       req.body;
 
     // Get the file path for the uploaded image
-    const image_url = req.file.filename
+    const image_url = req.file.filename 
 
     // Insert product data into the database
     const new_product = await pool.query(
       "INSERT INTO product(product_name, product_category, quantity, product_price, image_url) VALUES($1, $2, $3, $4, $5) RETURNING *",
       [product_name, product_category, quantity, product_price, image_url]
     );
-
+    
     res.status(200).json(new_product.rows[0]);
   } catch (error) {
     console.log(error);
@@ -454,6 +454,11 @@ app.post("/api/add-order", async (req, res) => {
     client.release();
   }
 });
+
+
+
+
+
 
 app.listen(port, () => {
   console.log("http://localhost:" + port);

@@ -26,10 +26,13 @@ CREATE TABLE inventory (
         product_category VARCHAR(255),
         quantity INTEGER,
         product_price DECIMAL,
-        image_url VARCHAR(255) 
+        image_url NOT NULL 
         );
 
-
+create table image(
+    id SERIAL NOT NULL PRIMARY KEY,
+    image_path VARCHAR NOT NULL
+)
 CREATE TABLE cafe_branch (
     id_branch SERIAL PRIMARY KEY,
     branch_name VARCHAR(250) NOT NULL,
