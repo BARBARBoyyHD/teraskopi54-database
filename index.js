@@ -12,26 +12,45 @@ const storage = multer.diskStorage({
     cb(null, "uploads"); // Folder where images will be stored
   },
   filename: (req, file, cb) => {
-    cb(null, file.fieldname+ "-" +Date.now() + path.extname(file.originalname)); // Append timestamp to avoid filename collisions
+    cb(
+      null,
+      file.fieldname + "-" + Date.now() + path.extname(file.originalname)
+    ); // Append timestamp to avoid filename collisions
   },
 });
 
-const upload = multer({
-  storage: storage
-});
+const upload = multer({ storage: storage });
 
 const port = 5000;
-// middleware
+
+// Middleware
 app.use(cors());
 app.use(express.json());
-app.use(express.static('uploads'))
+app.use(express.static("uploads"));
 
-app.post("/upload-images",upload.single('image'),(req,res)=>{
-  console.log(req.file);
-  res.json(req.file)
-})
+// Remove this line: app.use(multer);
 
+app.post("/upload-images", upload.single("image"), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
 
+    const image_path = req.file.filename;
+    const query = "INSERT INTO image (image_path) VALUES ($1) RETURNING *"; // Insert the image path into the database
+
+    const result = await pool.query(query, [image_path]);
+
+    // Send back the inserted data as a response
+    res.json({
+      message: "Image uploaded successfully!",
+      image: result.rows[0],
+    });
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ error: "Server error" });
+  }
+});
 
 // login cashier section
 // User registration endpoint cashier
@@ -321,14 +340,14 @@ app.post("/api/add-product", upload.single("image"), async (req, res) => {
       req.body;
 
     // Get the file path for the uploaded image
-    const image_url = req.file.filename 
+    const image_url = req.file.filename;
 
     // Insert product data into the database
     const new_product = await pool.query(
       "INSERT INTO product(product_name, product_category, quantity, product_price, image_url) VALUES($1, $2, $3, $4, $5) RETURNING *",
       [product_name, product_category, quantity, product_price, image_url]
     );
-    
+
     res.status(200).json(new_product.rows[0]);
   } catch (error) {
     console.log(error);
@@ -454,11 +473,6 @@ app.post("/api/add-order", async (req, res) => {
     client.release();
   }
 });
-
-
-
-
-
 
 app.listen(port, () => {
   console.log("http://localhost:" + port);
