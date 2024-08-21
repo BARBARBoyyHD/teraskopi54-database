@@ -20,14 +20,15 @@ CREATE TABLE inventory (
     quantity INTEGER NOT NULL,
     price_per_pcs INTEGER NOT NULL
 );
-        CREATE TABLE product (
-        product_id SERIAL PRIMARY KEY,
-        product_name VARCHAR(255) NOT NULL,
-        product_category VARCHAR(255),
-        quantity INTEGER,
-        product_price DECIMAL,
-        image_url VARCHAR(255)NOT NULL 
-        );
+CREATE TABLE product (
+    product_id SERIAL PRIMARY KEY,
+    product_name VARCHAR(255) NOT NULL,
+    product_category VARCHAR(255),
+    variant_type VARCHAR(50) NOT NULL CHECK (variant_type IN ('Hot', 'Iced')),
+    size_name VARCHAR(50) CHECK (size_name IN ('Large', 'Small')),
+    product_price INTEGER,
+    image_url VARCHAR(255) NOT NULL
+);
 
 create table image(
     id SERIAL NOT NULL PRIMARY KEY,
@@ -48,7 +49,7 @@ CREATE TABLE orders (
     product_id INTEGER NOT NULL,
     product_name VARCHAR(250) NOT NULL,
     quantity_order INTEGER NOT NULL,
-    price_total DECIMAL(10, 2) NOT NULL
+    price_total INTEGER(10, 2) NOT NULL
 );
 
 

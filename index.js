@@ -30,36 +30,6 @@ app.use(express.static("uploads"));
 
 // Remove this line: app.use(multer);
 
-app.post("/upload-images", upload.single("image"), async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ error: "No file uploaded" });
-    }
-
-    const image_path = req.file.filename;
-    const query = "INSERT INTO image (image_path) VALUES (?)"; // Insert the image path into the database
-
-    pool.query(query, [image_path], (error, results) => {
-      if (error) {
-        console.error(error.message);
-        return res.status(500).json({ error: "Server error" });
-      }
-
-      // Send back the inserted data as a response
-      res.json({
-        message: "Image uploaded successfully!",
-        image: {
-          id: results.insertId, // MySQL provides insertId for the newly inserted row
-          image_path: image_path,
-        },
-      });
-    });
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).json({ error: "Server error" });
-  }
-});
-
 // login cashier section
 // User registration endpoint cashier
 app.post("/api/register-cashier", async (req, res) => {
@@ -74,18 +44,18 @@ app.post("/api/register-cashier", async (req, res) => {
     const query =
       "INSERT INTO user_cashier (username, password_hash, contact) VALUES (?, ?, ?)";
 
-    pool.query(query, [username, password_hash, contact], (error, results) => {
-      if (error) {
-        console.error(error.message);
-        return res.status(500).json({ message: "Internal Server Error" });
-      }
+    // Use promise-based query
+    const [results] = await pool.query(query, [
+      username,
+      password_hash,
+      contact,
+    ]);
 
-      // Send back the inserted data as a response
-      res.status(201).json({
-        id: results.insertId, // MySQL provides insertId for the newly inserted row
-        username,
-        contact,
-      });
+    // Send back the inserted data as a response
+    res.status(201).json({
+      id: results.insertId, // MySQL provides insertId for the newly inserted row
+      username,
+      contact,
     });
   } catch (error) {
     console.error(error.message);
@@ -94,15 +64,16 @@ app.post("/api/register-cashier", async (req, res) => {
 });
 
 // get all user cashier
-app.get("/api/user-cashier", (req, res) => {
-  pool.query("SELECT * FROM user_cashier", (error, results) => {
-    if (error) {
-      console.error(error);
-      return res.status(500).json({ message: "Internal Server Error" });
-    }
+app.get("/api/user-cashier", async (req, res) => {
+  try {
+    const [results] = await pool.query("SELECT * FROM user_cashier");
+
     // Send the results directly
     res.status(200).json(results);
-  });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
 });
 
 // User login endpoint
@@ -111,87 +82,16 @@ app.post("/api/login-cashier", async (req, res) => {
     const { username, password } = req.body;
 
     // Find the user by username
-    const query = "SELECT * FROM user_cashier WHERE username = ?";
-    pool.query(query, [username], async (error, results) => {
-      if (error) {
-        console.error(error.message);
-        return res.status(500).json({ message: "Internal Server Error" });
-      }
-
-      if (results.length === 0) {
-        return res
-          .status(400)
-          .json({ message: "Invalid username or password" });
-      }
-
-      const userData = results[0];
-      const validPassword = await bcrypt.compare(
-        password,
-        userData.password_hash
-      );
-
-      if (!validPassword) {
-        return res
-          .status(400)
-          .json({ message: "Invalid username or password" });
-      }
-
-      // If the password is valid, send a success response
-      return res.status(200).json({ message: "Login successful" });
-    });
-  } catch (error) {
-    console.error(error.message);
-    return res.status(500).json({ message: error.message });
-  }
-});
-
-// user stock section
-app.post("/api/register-stock", async (req, res) => {
-  try {
-    const { username, password, contact } = req.body;
-
-    // Hash the password
-    const saltRounds = 10;
-    const password_hash = await bcrypt.hash(password, saltRounds);
-
-    // Insert the new user into the database
-    const newUser = await pool.query(
-      "INSERT INTO user_stock (username, password_hash, contact) VALUES (?, ?, ?) RETURNING *",
-      [username, password_hash, contact]
-    );
-
-    res.status(201).json(newUser.rows[0]);
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: error.message });
-  }
-});
-// get all user stock
-app.get("/api/user-stock", async (req, res) => {
-  try {
-    const getUserCashier = await pool.query("SELECT * FROM user_stock");
-    res.json(getUserCashier.rows);
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: error.message });
-  }
-});
-// login stock
-app.post("/api/login-stock", async (req, res) => {
-  try {
-    const { username, password } = req.body;
-
-    // Find the user by username
-    const user = await pool.query(
-      "SELECT * FROM user_stock WHERE username = ?",
+    const [results] = await pool.query(
+      "SELECT * FROM user_cashier WHERE username = ?",
       [username]
     );
 
-    if (user.rows.length === 0) {
+    if (results.length === 0) {
       return res.status(400).json({ message: "Invalid username or password" });
     }
 
-    const userData = user.rows[0];
+    const userData = results[0];
     const validPassword = await bcrypt.compare(
       password,
       userData.password_hash
@@ -204,7 +104,84 @@ app.post("/api/login-stock", async (req, res) => {
     // If the password is valid, send a success response
     return res.status(200).json({ message: "Login successful" });
   } catch (error) {
+    console.error(error.message);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+// user stock section
+app.post("/api/register-stock", async (req, res) => {
+  try {
+    const { username, password, contact } = req.body;
+
+    // Hash the password
+    const saltRounds = 10;
+    const password_hash = await bcrypt.hash(password, saltRounds);
+
+    // Insert the new user into the MySQL database
+    const sql =
+      "INSERT INTO user_stock (username, password_hash, contact) VALUES (?, ?, ?)";
+
+    // Use promise-based query
+    const [results] = await pool.query(sql, [username, password_hash, contact]);
+
+    // Send back the inserted data as a response
+    res.status(201).json({ id: results.insertId, username, contact });
+  } catch (error) {
+    console.error(error.message);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// get all user stock
+app.get("/api/user-stock", async (req, res) => {
+  try {
+    const sql = "SELECT * FROM user_stock";
+
+    pool.query(sql, (error, results) => {
+      if (error) {
+        console.log(error);
+        return res.status(500).json({ message: error.message });
+      }
+
+      // 'results' contains the rows returned by the query in MySQL
+      res.json(results);
+    });
+  } catch (error) {
     console.log(error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// login stock
+app.post("/api/login-stock", async (req, res) => {
+  try {
+    const { username, password } = req.body;
+
+    // Find the user by username in MySQL
+    const sql = "SELECT * FROM user_stock WHERE username = ?";
+
+    // Use promise-based query
+    const [results] = await pool.query(sql, [username]);
+
+    if (results.length === 0) {
+      return res.status(400).json({ message: "Invalid username or password" });
+    }
+
+    const userData = results[0];
+    const validPassword = await bcrypt.compare(
+      password,
+      userData.password_hash
+    );
+
+    if (!validPassword) {
+      return res.status(400).json({ message: "Invalid username or password" });
+    }
+
+    // If the password is valid, send a success response
+    return res.status(200).json({ message: "Login successful" });
+  } catch (error) {
+    console.error(error.message);
     return res.status(500).json({ message: error.message });
   }
 });
@@ -212,110 +189,103 @@ app.post("/api/login-stock", async (req, res) => {
 // inventory section
 // get single inventory item
 app.get("/api/inventory/:id", async (req, res) => {
+  const { id } = req.params;
+  const sql = "SELECT * FROM inventory WHERE item_id = ?";
+
+  pool
+    .query(sql, [id])
+    .then(([results]) => {
+      if (results.length === 0) {
+        res.status(404).json({ message: "Item not found" });
+      } else {
+        res.status(200).json(results[0]);
+      }
+    })
+    .catch((err) => {
+      console.error("Error fetching item:", err);
+      res.status(500).json({ message: "Error fetching item" });
+    });
+});
+
+// get all inventory items
+app.get("/api/inventory", async (req, res) => {
   try {
-    const { id } = req.params;
-    const getSingleItem = await pool.query(
-      "SELECT * FROM inventory WHERE item_id = ?",
-      [id]
-    );
-    res.json(getSingleItem.rows[0]);
-  } catch (error) {
-    console.log(error);
-    res.json({ message: error });
+    const [results] = await pool.query("SELECT * FROM inventory");
+    res.status(200).json(results);
+  } catch (err) {
+    console.error("Error fetching inventory:", err);
+    res.status(500).json({ message: "Error fetching inventory" });
   }
 });
-// get all inventory items
-app.get("/api/inventory", (req, res) => {
-  // Execute the query to get all items from the inventory
-  pool.query("SELECT * FROM inventory", (error, results) => {
-    if (error) {
-      console.error("Error fetching inventory items:", error); // Log detailed error to the console
-      return res.status(500).json({
-        message: "Failed to fetch inventory items",
-        error: error.message || error,
-      });
-    }
-
-    // Send the results as JSON response
-    res.status(200).json(results); // `results` contains the rows of data
-  });
-});
-
 // delete item inventory
 app.delete("/api/inventory/:id", (req, res) => {
   const { id } = req.params;
-  pool.query(
-    "DELETE FROM inventory WHERE item_id = ?",
-    [id],
-    (error, result) => {
-      if (error) {
-        console.log(error);
-        res.status(500).json({ message: "Internal Server Error" });
+  const deleteItem = "DELETE FROM inventory WHERE item_id = ?";
+
+  pool
+    .query(deleteItem, [id])
+    .then(([results]) => {
+      // MySQL2 returns results in an array
+      if (results.affectedRows > 0) {
+        console.log("Item Deleted Successfully");
+        res.status(200).json({ message: "Item deleted successfully" });
       } else {
-        res.status(200).json("item was deleted successfully");
+        res.status(404).json({ message: "Item not found" });
       }
-    }
-  );
+    })
+    .catch((err) => {
+      console.error("Error deleting item:", err);
+      res.status(500).json({ message: "Failed to delete item" });
+    });
 });
 
 // edit inventory
-app.put("/api/inventory/:id", (req, res) => {
+app.put("/api/inventory/:id", async (req, res) => {
   const { id } = req.params;
   const { item_name, quantity, price_per_pcs } = req.body;
 
-  // SQL query with SET clause
-  pool.query(
-    "UPDATE inventory SET item_name = ?, quantity = ?, price_per_pcs = ? WHERE item_id = ?",
-    [item_name, quantity, price_per_pcs, id],
-    (error, result) => {
-      if (error) {
-        console.error(error);
-        res.status(500).json({ message: "Internal Server Error" });
-      } else if (result.affectedRows === 0) {
-        // If no rows were affected, the ID may not exist
-        res.status(404).json({ message: "Item not found" });
-      } else {
-        res.status(200).json({ message: "Item updated successfully" });
-      }
+  const editItemQuery =
+    "UPDATE inventory SET item_name = ?, quantity = ?, price_per_pcs = ? WHERE item_id = ?";
+
+  try {
+    const [result] = await pool.query(editItemQuery, [
+      item_name,
+      quantity,
+      price_per_pcs,
+      id,
+    ]);
+
+    if (result.affectedRows > 0) {
+      console.log("Item edited successfully");
+      res.status(200).json({ message: "Item updated successfully" });
+    } else {
+      console.log("Item not found");
+      res.status(404).json({ message: "Item not found" });
     }
-  );
+  } catch (err) {
+    console.error("Error updating item:", err);
+    res.status(500).json({ message: "Error updating item" });
+  }
 });
 
 // add item inventory
-app.post("/api/add-item", (req, res) => {
+app.post("/api/add-item", async (req, res) => {
   const { item_name, quantity, price_per_pcs } = req.body;
+  const addItemQuery =
+    "INSERT INTO inventory (item_name, quantity, price_per_pcs) VALUES (?, ?, ?)";
 
-  // Insert item into the database using the MySQL pool directly
-  pool.query(
-    "INSERT INTO inventory (item_name, quantity, price_per_pcs) VALUES (?, ?, ?)",
-    [item_name, quantity, price_per_pcs],
-    (error, result) => {
-      if (error) {
-        console.error("Error inserting item:", error); // Log detailed error to the console
-        return res.status(500).json({
-          message: "Failed to add item",
-          error: error.message || error,
-        });
-      }
-
-      // Retrieve the last inserted item
-      pool.query(
-        "SELECT * FROM inventory WHERE item_id = ?",
-        [result.insertId],
-        (error, rows) => {
-          if (error) {
-            console.error("Error fetching item:", error); // Log detailed error to the console
-            return res.status(500).json({
-              message: "Failed to fetch item",
-              error: error.message || error,
-            });
-          }
-
-          res.status(200).json(rows[0]); // Return the inserted item
-        }
-      );
-    }
-  );
+  try {
+    const [result] = await pool.query(addItemQuery, [
+      item_name,
+      quantity,
+      price_per_pcs,
+    ]);
+    console.log("Item added", result);
+    res.status(200).json({ message: "Item added successfully" });
+  } catch (err) {
+    console.error("Error adding item:", err);
+    res.status(500).json({ message: "Error adding item" });
+  }
 });
 // prodcut section
 
@@ -323,64 +293,89 @@ app.post("/api/add-item", (req, res) => {
 app.get("/api/products/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const getSingleProduct = await pool.query(
+    const [results] = await db.execute(
       "SELECT * FROM product WHERE product_id = ?",
       [id]
     );
-    res.json(getSingleProduct.rows[0]);
-    res.status(200);
+
+    // If no product is found
+    if (results.length === 0) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    // Return the first row (single product) in the results
+    res.status(200).json(results[0]);
   } catch (error) {
     console.log(error);
-    res.json({ message: error });
+    res.status(500).json({ message: error.message });
   }
 });
 
 // get all products
-app.get("/api/products", async (req, res) => {
-  try {
-    const getAllproducts = await pool.query("SELECT * FROM product");
-    res.json(getAllproducts.rows);
-    res.status(200);
-  } catch (error) {
-    console.log(error);
-    res.json({ message: error });
-  }
+app.get("/api/products",  (req, res) => {
+  const sql = "SELECT * FROM product";
+
+  pool.query(sql)
+  .then(([rows])=>{
+    res.status(200).json(rows);
+  })
+  .catch((err)=>{
+    res.status(500).json("ERROR FETCHING DATA")
+  })
+
 });
+
 // delete product
 app.delete("/api/products/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const deleteProduct = await pool.query(
-      "DELETE FROM product WHERE product_id = ?",
-      [id]
-    );
-    res.status(200).json("Product Deleted");
+    const sql = "DELETE FROM product WHERE product_id = ?";
+
+    // Use async/await and promise-based pool.query
+    const [results] = await pool.query(sql, [id]);
+
+    // Check if any rows were affected (i.e., if a product was deleted)
+    if (results.affectedRows === 0) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    res.status(200).json({ message: "Product Deleted" });
   } catch (error) {
-    res.json({ message: error });
+    console.error(error);
+    res.status(500).json({ message: "Internal Server Error" });
   }
 });
+
 // edit product
-app.put("/api/products/:id", async (req, res) => {
+app.put("/api/products/:id", upload.single("image"), async (req, res) => {
   try {
     const { id } = req.params;
+    const { product_name, product_category, product_price } = req.body;
 
-    const {
+    // Get the file path for the uploaded image, if provided
+    const image_url = req.file ? req.file.filename : req.body.image_url; // Use the new image if uploaded, otherwise use the existing image URL
+
+    const sql = `
+      UPDATE product 
+      SET product_name = ?, product_category = ?, product_price = ?, image_url = ?
+      WHERE product_id = ?
+    `;
+
+    // Use promise-based query
+    const [results] = await pool.query(sql, [
       product_name,
       product_category,
-      quantity,
       product_price,
       image_url,
-    } = req.body; // assuming you're updating these fields
-    const editProduct = await pool.query(
-      "UPDATE product SET product_name = ?, product_category = ?, quantity = ?, product_price = ? , image_url = $5 WHERE product_id = $6 RETURNING *",
-      [product_name, product_category, quantity, product_price, image_url, id]
-    );
-    res.status(200).json(editProduct.rows[0]);
-    if (editProduct.rowCount === 0) {
+      id,
+    ]);
+
+    // Check if any rows were affected (i.e., if a product was updated)
+    if (results.affectedRows === 0) {
       return res.status(404).json({ message: "Item not found" });
     }
 
-    res.status(200).json("item was updated successfully");
+    res.status(200).json({ message: "Item was updated successfully" });
   } catch (error) {
     console.error(error); // Log the error for debugging
     res.status(500).json({ message: "Internal Server Error" });
@@ -389,145 +384,205 @@ app.put("/api/products/:id", async (req, res) => {
 
 // add product
 // Add product with image
-app.post("/api/add-product", upload.single("image"), async (req, res) => {
-  try {
-    const { product_name, product_category, quantity, product_price } =
-      req.body;
+app.post("/api/add-product", upload.single("image"), (req, res) => {
+  const {
+    product_name,
+    product_category,
+    hot_price,
+    cold_price,
+    large_size_price,
+    small_size_price,
+    variant_type, // This is not needed for this insertion but you can use it for validation
+    size_name, // This is not needed for this insertion but you can use it for validation
+  } = req.body;
 
-    // Get the file path for the uploaded image
-    const image_url = req.file.filename;
-
-    // Insert product data into the database
-    const new_product = await pool.query(
-      "INSERT INTO product(product_name, product_category, quantity, product_price, image_url) VALUES(?, ?, ?, ?, $5) RETURNING *",
-      [product_name, product_category, quantity, product_price, image_url]
-    );
-
-    res.status(200).json(new_product.rows[0]);
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: error.message });
+  if (!req.file) {
+    return res.status(400).json({ message: "No file uploaded" });
   }
+
+  const image_url = req.file.filename;
+
+  const sql = `
+    INSERT INTO product (
+      product_name, 
+      product_category, 
+      hot_price, 
+      cold_price, 
+      large_size_price, 
+      small_size_price, 
+      image_url
+    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+  `;
+
+  pool.query(
+    sql,
+    [
+      product_name,
+      product_category,
+      hot_price,
+      cold_price,
+      large_size_price,
+      small_size_price,
+      image_url,
+    ],
+    (error, results) => {
+      if (error) {
+        console.error(error); // Log the error for debugging
+        return res.status(500).json({ message: "Internal Server Error" });
+      }
+      res.status(200).json({ message: "Product added successfully" });
+    }
+  );
 });
+
 // edit cafe branch
 app.put("/api/cafe-branch/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { branch_name, address_branch, contact } = req.body;
-    const editBranch = await pool.query(
-      "UPDATE cafe_branch SET branch_name = ?, address_branch = ?, contact = ? WHERE id_branch = ? RETURNING *",
-      [branch_name, address_branch, contact, id]
-    );
-    if (editBranch.rowCount === 0) {
-      return res.status(404).json({ message: "Item not found" });
-    }
+  const {id} = req.params
+  const {branch_name, address_branch, contact} = req.body
 
-    res.status(200);
-    res.json("branch updated");
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: error.message });
-  }
+  const sql = "UPDATE cafe_branch SET branch_name = ?, address_branch = ?, contact = ? WHERE id_branch = ?";
+  pool.query(sql,[branch_name, address_branch, contact, id])
+  .then(([result])=>{
+    if(result.affectedRows){
+      res.status(200).json("ITEM EDITED")
+    }
+    else{
+      res.status(404).json("item not found")
+    }
+    
+    
+  })
+  .catch((err)=>{
+    res.status(500).json("ERROR EDITING DATA")
+  })
+
 });
+
 // delete cafe branch
 app.delete("/api/cafe-branch/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const deleteBranch = await pool.query(
-      "DELETE FROM cafe_branch WHERE id_branch = ?",
-      [id]
-    );
-    res.status(200).json("Branch Deleted");
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: error.message });
-  }
+  const {id} = req.params
+  const sql = "DELETE FROM cafe_branch where id_branch = ?";
+
+  pool.query(sql,[id])
+  .then(([rows])=>{
+    res.status(200).json(rows);
+  })
+  .catch((err)=>{
+    res.status(500).json({message:err.message});
+  })
+
 });
 
 // add cafe branch
-app.post("/api/add-cafe-branch", async (req, res) => {
-  try {
-    const { branch_name, address_branch, contact } = req.body;
-    const new_branch = await pool.query(
-      "INSERT INTO cafe_branch(branch_name, address_branch, contact) VALUES(?, ?, ?) RETURNING *",
-      [branch_name, address_branch, contact]
-    );
-    res.status(200).json(new_branch.rows[0]); // Set the status before sending the JSON response
-    res.json("data added successfully");
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: error.message }); // Set a 500 status code on error
-  }
+app.post("/api/add-cafe-branch", (req, res) => {
+  const { branch_name, address_branch, contact } = req.body;
+  const sql =
+    "INSERT INTO cafe_branch(branch_name,address_branch,contact) VALUES(?,?,?)";
+
+  pool
+    .query(sql, [branch_name, address_branch, contact])
+    .then(([rows]) => {
+      res.status(200).json(rows);
+      console.log("item Added Successfully");
+    })
+    .catch((err) => {
+      console.log(err);
+      res.status(500).send("An error occurred while fetching data");
+    });
 });
+
+// get all cafe branch
+app.get("/api/cafe-branch", (req, res) => {
+  const sql = "SELECT * FROM cafe_branch";
+
+  pool
+    .query(sql)
+    .then(([rows]) => {
+      res.status(200).json(rows);
+    })
+    .catch((err) => {
+      console.log(err);
+      res.status(500).send("An error occurred while fetching data");
+    });
+});
+// get sinlge cafe branch
+app.get("/api/cafe-branch/:id", (req, res) => {
+  const { id } = req.params;
+  const sql = "SELECT * FROM cafe_branch WHERE id_branch = ?";
+
+  pool
+    .query(sql, [id])
+    .then(([rows]) => {
+      res.status(200).json(rows);
+    })
+    .catch((err) => {
+      console.error(err); // Logging the error for debugging
+      res.status(500).send("An error occurred while fetching data");
+    });
+});
+
 // orders section
 
 // Get all orders with their items
-app.get("/api/orders", async (req, res) => {
-  try {
-    const result = await pool.query("SELECT * FROM orders");
-
-    // Organize results by order
-    const orders = {};
-    result.rows.forEach((row) => {
-      if (!orders[row.order_id]) {
-        orders[row.order_id] = {
-          order_id: row.order_id,
-          customer_name: row.customer_name,
-          order_date: row.order_date,
-          payment_method: row.payment_method,
-          items: [],
-        };
-      }
-      orders[row.order_id].items.push({
-        product_id: row.product_id,
-        product_name: row.product_name,
-        quantity_order: row.quantity_order,
-        price_total: row.price_total,
-      });
-    });
-
-    res.json(Object.values(orders));
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: error.message });
-  }
-});
-
-// Add a new order with multiple items
 app.post("/api/add-order", async (req, res) => {
-  const client = await pool.connect();
+  const { orders, total_amount } = req.body;
+
+  if (!orders || orders.length === 0) {
+    return res.status(400).json({ message: "No items in the cart" });
+  }
+
+  const connection = await pool.getConnection();
+
   try {
-    await client.query("BEGIN");
+    await connection.beginTransaction();
 
-    const { customer_name, payment_method, items } = req.body;
-
-    // Insert each item into the orders table
-    for (const item of items) {
-      const { product_id, product_name, quantity_order, price_total } = item;
-
-      await client.query(
-        "INSERT INTO orders(customer_name, order_date, payment_method, product_id, product_name, quantity_order, price_total) VALUES(?, CURRENT_TIMESTAMP, ?, ?, ?, $5, $6)",
+    // Insert each order item
+    const insertPromises = orders.map((order) =>
+      connection.query(
+        `INSERT INTO orders (customer_name, payment_method, product_id, product_name, variant_type, size_name, quantity_order, price, total_price)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
-          customer_name,
-          payment_method,
-          product_id,
-          product_name,
-          quantity_order,
-          price_total,
+          order.customer_name,
+          order.payment_method,
+          order.product_id,
+          order.product_name,
+          order.variant_type,
+          order.size_name,
+          order.quantity_order,
+          order.price,
+          order.total_price,
         ]
-      );
-    }
+      )
+    );
 
-    await client.query("COMMIT");
-    res.status(201).json({ message: "Order and items added successfully" });
+    await Promise.all(insertPromises);
+
+    await connection.commit();
+    res.status(201).json({ message: "Order placed successfully" });
   } catch (error) {
-    await client.query("ROLLBACK");
-    console.log(error);
-    res.status(500).json({ message: error.message });
+    await connection.rollback();
+    console.error(error);
+    res.status(500).json({ message: "Error placing order" });
   } finally {
-    client.release();
+    connection.release(); // Ensure the connection is released
   }
 });
+
+// get all orders
+app.get("/api/orders", async (req, res) => {
+  const sql = "SELECT * FROM orders";
+
+  pool.query(sql)
+  .then(([rows])=>{
+    res.status(200).json(rows);
+  })
+  .catch((err)=>{
+    res.status(500).json({message:err.message});
+  })
+
+})
+
+
 
 app.listen(port, () => {
   console.log("http://localhost:" + port);
