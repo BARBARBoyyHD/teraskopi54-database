@@ -5,6 +5,7 @@ const cors = require("cors");
 const bcrypt = require("bcrypt");
 const multer = require("multer");
 const path = require("path");
+const e = require("express");
 
 // Define storage for the images
 const storage = multer.diskStorage({
@@ -290,96 +291,116 @@ app.post("/api/add-item", async (req, res) => {
 // prodcut section
 
 // get single product
-app.get("/api/products/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const [results] = await db.execute(
-      "SELECT * FROM product WHERE product_id = ?",
-      [id]
-    );
+app.get("/api/products/:id", (req, res) => {
+  const { id } = req.params;
+  const sql = "SELECT * FROM product WHERE product_id = ?";
 
-    // If no product is found
-    if (results.length === 0) {
-      return res.status(404).json({ message: "Product not found" });
-    }
-
-    // Return the first row (single product) in the results
-    res.status(200).json(results[0]);
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: error.message });
-  }
+  pool
+    .query(sql, [id])
+    .then(([rows]) => {
+      if (rows.length === 0) {
+        res.status(404).json("item not found");
+      } else {
+        res.status(200).json(rows[0]);
+      }
+    })
+    .catch((err) => {
+      console.log(err);
+    });
 });
 
 // get all products
-app.get("/api/products",  (req, res) => {
+app.get("/api/products", (req, res) => {
   const sql = "SELECT * FROM product";
 
-  pool.query(sql)
-  .then(([rows])=>{
-    res.status(200).json(rows);
-  })
-  .catch((err)=>{
-    res.status(500).json("ERROR FETCHING DATA")
-  })
-
+  pool
+    .query(sql)
+    .then(([rows]) => {
+      res.status(200).json(rows);
+    })
+    .catch((err) => {
+      res.status(500).json("ERROR FETCHING DATA");
+    });
 });
 
 // delete product
-app.delete("/api/products/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const sql = "DELETE FROM product WHERE product_id = ?";
+app.delete("/api/products/:id", (req, res) => {
+  const { id } = req.params;
+  const sql = "DELETE FROM product WHERE product_id = ?";
 
-    // Use async/await and promise-based pool.query
-    const [results] = await pool.query(sql, [id]);
-
-    // Check if any rows were affected (i.e., if a product was deleted)
-    if (results.affectedRows === 0) {
-      return res.status(404).json({ message: "Product not found" });
-    }
-
-    res.status(200).json({ message: "Product Deleted" });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Internal Server Error" });
-  }
+  pool
+    .query(sql, [id])
+    .then(([results]) => {
+      if (results.affectedRows > 0) {
+        res.status(200).json({ message: "Item deleted successfully" });
+      } else {
+        res.status(404).json({ message: "Item not found" });
+      }
+    })
+    .catch((err) => {
+      console.log(err);
+    });
 });
 
 // edit product
-app.put("/api/products/:id", upload.single("image"), async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { product_name, product_category, product_price } = req.body;
+app.put("/api/products/:id", upload.single("image"), (req, res) => {
+  const { id } = req.params;
+  const {
+    product_name,
+    product_category,
+    hot_price,
+    cold_price,
+    large_size_price,
+    small_size_price,
+  } = req.body;
 
-    // Get the file path for the uploaded image, if provided
-    const image_url = req.file ? req.file.filename : req.body.image_url; // Use the new image if uploaded, otherwise use the existing image URL
+  // Check if an image is uploaded
+  const image_url = req.file ? req.file.filename : null;
 
-    const sql = `
-      UPDATE product 
-      SET product_name = ?, product_category = ?, product_price = ?, image_url = ?
-      WHERE product_id = ?
-    `;
+  // SQL query to update product with or without a new image
+  let sql;
+  let params;
 
-    // Use promise-based query
-    const [results] = await pool.query(sql, [
+  if (image_url) {
+    // If a new image is uploaded, update the image URL
+    sql = `UPDATE product SET product_name = ?, product_category = ?, hot_price = ?, cold_price = ?, large_size_price = ?, small_size_price = ?, image_url = ? WHERE product_id = ?`;
+    params = [
       product_name,
       product_category,
-      product_price,
+      hot_price,
+      cold_price,
+      large_size_price,
+      small_size_price,
       image_url,
       id,
-    ]);
-
-    // Check if any rows were affected (i.e., if a product was updated)
-    if (results.affectedRows === 0) {
-      return res.status(404).json({ message: "Item not found" });
-    }
-
-    res.status(200).json({ message: "Item was updated successfully" });
-  } catch (error) {
-    console.error(error); // Log the error for debugging
-    res.status(500).json({ message: "Internal Server Error" });
+    ];
+  } else {
+    // If no new image is uploaded, don't update the image URL
+    sql = `UPDATE product SET product_name = ?, product_category = ?, hot_price = ?, cold_price = ?, large_size_price = ?, small_size_price = ? WHERE product_id = ?`;
+    params = [
+      product_name,
+      product_category,
+      hot_price,
+      cold_price,
+      large_size_price,
+      small_size_price,
+      id,
+    ];
   }
+
+  pool
+    .query(sql, params)
+    .then(([results]) => {  
+      if (results.affectedRows > 0) {
+        res.status(200).json({ message: "Item updated successfully" });
+      } else {
+        res.status(404).json({ message: "Item not found" });
+      }
+    })
+    .catch((err) => {
+      console.error(err);
+      res.status(500).json({ message: "An error occurred" });
+    });
 });
 
 // add product
@@ -392,10 +413,9 @@ app.post("/api/add-product", upload.single("image"), (req, res) => {
     cold_price,
     large_size_price,
     small_size_price,
-    variant_type, // This is not needed for this insertion but you can use it for validation
-    size_name, // This is not needed for this insertion but you can use it for validation
   } = req.body;
 
+  // Check if image was uploaded
   if (!req.file) {
     return res.status(400).json({ message: "No file uploaded" });
   }
@@ -414,9 +434,8 @@ app.post("/api/add-product", upload.single("image"), (req, res) => {
     ) VALUES (?, ?, ?, ?, ?, ?, ?)
   `;
 
-  pool.query(
-    sql,
-    [
+  pool
+    .query(sql, [
       product_name,
       product_category,
       hot_price,
@@ -424,53 +443,50 @@ app.post("/api/add-product", upload.single("image"), (req, res) => {
       large_size_price,
       small_size_price,
       image_url,
-    ],
-    (error, results) => {
-      if (error) {
-        console.error(error); // Log the error for debugging
-        return res.status(500).json({ message: "Internal Server Error" });
-      }
-      res.status(200).json({ message: "Product added successfully" });
-    }
-  );
+    ])
+    .then(([rows]) => {
+      res.status(200).json({ message: "Item was added successfully" });
+    })
+    .catch((err) => {
+      console.error(err); // Log the error for debugging
+      res.status(500).json({ message: "Failed to add item" });
+    });
 });
 
 // edit cafe branch
 app.put("/api/cafe-branch/:id", async (req, res) => {
-  const {id} = req.params
-  const {branch_name, address_branch, contact} = req.body
+  const { id } = req.params;
+  const { branch_name, address_branch, contact } = req.body;
 
-  const sql = "UPDATE cafe_branch SET branch_name = ?, address_branch = ?, contact = ? WHERE id_branch = ?";
-  pool.query(sql,[branch_name, address_branch, contact, id])
-  .then(([result])=>{
-    if(result.affectedRows){
-      res.status(200).json("ITEM EDITED")
-    }
-    else{
-      res.status(404).json("item not found")
-    }
-    
-    
-  })
-  .catch((err)=>{
-    res.status(500).json("ERROR EDITING DATA")
-  })
-
+  const sql =
+    "UPDATE cafe_branch SET branch_name = ?, address_branch = ?, contact = ? WHERE id_branch = ?";
+  pool
+    .query(sql, [branch_name, address_branch, contact, id])
+    .then(([result]) => {
+      if (result.affectedRows) {
+        res.status(200).json("ITEM EDITED");
+      } else {
+        res.status(404).json("item not found");
+      }
+    })
+    .catch((err) => {
+      res.status(500).json("ERROR EDITING DATA");
+    });
 });
 
 // delete cafe branch
 app.delete("/api/cafe-branch/:id", async (req, res) => {
-  const {id} = req.params
+  const { id } = req.params;
   const sql = "DELETE FROM cafe_branch where id_branch = ?";
 
-  pool.query(sql,[id])
-  .then(([rows])=>{
-    res.status(200).json(rows);
-  })
-  .catch((err)=>{
-    res.status(500).json({message:err.message});
-  })
-
+  pool
+    .query(sql, [id])
+    .then(([rows]) => {
+      res.status(200).json(rows);
+    })
+    .catch((err) => {
+      res.status(500).json({ message: err.message });
+    });
 });
 
 // add cafe branch
@@ -572,17 +588,15 @@ app.post("/api/add-order", async (req, res) => {
 app.get("/api/orders", async (req, res) => {
   const sql = "SELECT * FROM orders";
 
-  pool.query(sql)
-  .then(([rows])=>{
-    res.status(200).json(rows);
-  })
-  .catch((err)=>{
-    res.status(500).json({message:err.message});
-  })
-
-})
-
-
+  pool
+    .query(sql)
+    .then(([rows]) => {
+      res.status(200).json(rows);
+    })
+    .catch((err) => {
+      res.status(500).json({ message: err.message });
+    });
+});
 
 app.listen(port, () => {
   console.log("http://localhost:" + port);
