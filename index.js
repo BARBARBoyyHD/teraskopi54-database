@@ -228,7 +228,6 @@ app.delete("/api/inventory/:id", (req, res) => {
     .then(([results]) => {
       // MySQL2 returns results in an array
       if (results.affectedRows > 0) {
-        console.log("Item Deleted Successfully");
         res.status(200).json({ message: "Item deleted successfully" });
       } else {
         res.status(404).json({ message: "Item not found" });
@@ -257,7 +256,6 @@ app.put("/api/inventory/:id", async (req, res) => {
     ]);
 
     if (result.affectedRows > 0) {
-      console.log("Item edited successfully");
       res.status(200).json({ message: "Item updated successfully" });
     } else {
       console.log("Item not found");
@@ -281,7 +279,6 @@ app.post("/api/add-item", async (req, res) => {
       quantity,
       price_per_pcs,
     ]);
-    console.log("Item added", result);
     res.status(200).json({ message: "Item added successfully" });
   } catch (err) {
     console.error("Error adding item:", err);
@@ -499,7 +496,6 @@ app.post("/api/add-cafe-branch", (req, res) => {
     .query(sql, [branch_name, address_branch, contact])
     .then(([rows]) => {
       res.status(200).json(rows);
-      console.log("item Added Successfully");
     })
     .catch((err) => {
       console.log(err);
